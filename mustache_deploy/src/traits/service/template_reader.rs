@@ -1,4 +1,5 @@
 use crate::common::common::*;
 
-#[async_trait]
-pub trait TemplateReader {}
+pub trait TemplateReader {
+    fn read_to_deploy_template(&self) -> anyhow::Result<Vec<String>>;
+}

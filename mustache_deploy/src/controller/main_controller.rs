@@ -23,9 +23,14 @@ impl<B: BackupService, TD: TemplateDeployer, TR: TemplateReader, TS: TemplateSca
 {
     #[doc = "mustache template 배포함수"]
     pub async fn deploy_task(&self) -> anyhow::Result<()> {
-        
-        
-        
+        /* 배포대상이 되는 mustache template 읽기 -> repository 에서 읽어줌 */
+        let to_deploy_list: Vec<String> = self.template_reader.read_to_deploy_template()?;
+
+        /* 해당 template scan */
+        //self.template_scanner.test(&to_deploy_list);
+
+        /* 해당 template 현재맞는 use case 에 대응하여 배포 */
+
         Ok(())
     }
 }

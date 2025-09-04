@@ -21,7 +21,6 @@ pub struct EsClient {
 }
 
 impl EsRepositoryImpl {
-    
     pub fn instance() -> &'static EsRepositoryImpl {
         &ES_REPOSITORY
     }
@@ -33,22 +32,23 @@ impl EsRepositoryImpl {
     /// # Returns
     /// * anyhow::Result<Self>
     fn new() -> Self {
-        
         /* 프로그램 실행환경 설정 -> 해당 환경에 따라서 어떤 elasticsearch 를 바라볼건지 정해짐 */
         let args: Vec<String> = std::env::args().collect();
         let mut env_type: &str = "dev"; /* 환경 기본값 */
-        if args.len() >= 3 && args[1] == "--env" {
+        if args.len() >= 5 && args[1] == "--env" {
             env_type = &args[2];
         }
-        
+
         let es_info_path: &str = match env_type {
             "prod" => "ES_PROD_PATH",
             "dev" => "ES_DEV_PATH",
             _ => {
-                error!("[WARN][EsRepositoryImpl->new] The execution case must be specified as either prod or dev. Because other arguments are provided, it will be executed in the 'dev' environment.");
+                error!(
+                    "[WARN][EsRepositoryImpl->new] The execution case must be specified as either prod or dev. Because other arguments are provided, it will be executed in the 'dev' environment."
+                );
                 "ES_DEV_PATH"
             }
-        }; 
+        };
 
         let es_info: String = env::var(es_info_path).unwrap_or_else(|e| {
             error!("[ERROR][EsRepositoryImpl->new] {:?}", e);

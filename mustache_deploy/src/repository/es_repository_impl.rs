@@ -57,13 +57,14 @@ impl EsRepositoryImpl {
         let mut es_clients: Vec<Arc<EsClient>> = Vec::new();
 
         for url in copy_es_info.hosts() {
+            
             let parse_url: String = if copy_es_info.es_id() == "" && copy_es_info.es_pw() == "" {
                 format!("http://{}", url)
             } else {
                 format!(
                     "http://{}:{}@{}",
-                    copy_es_info.es_id(),
-                    copy_es_info.es_pw(),
+                    encode(copy_es_info.es_id()),
+                    encode(copy_es_info.es_pw()),
                     url
                 )
             };

@@ -10,6 +10,19 @@ impl TemplateReaderImpl {}
 
 impl TemplateReader for TemplateReaderImpl {
     #[doc = "배포할 mustache template 리스트를 반환해주는 함수"]
+    /// 
+    /// # Arguments
+    /// * `&self` - TemplateReaderImpl 인스턴스
+    /// 
+    /// # Returns
+    /// * `Ok(Vec<String>)` - 배포할 템플릿 이름들의 목록
+    /// * `Err(anyhow::Error)` - 파일 읽기 실패 또는 환경변수 누락
+    /// 
+    /// # Environment Variables
+    /// * `DEPLOY_TARGET_PATH` - 배포 대상 목록 파일의 상대 경로
+    /// 
+    /// # Command Line Arguments
+    /// * `--path <경로>` - 기본 경로 지정 (필수)
     fn read_to_deploy_template(&self) -> anyhow::Result<Vec<String>> {
         let args: Vec<String> = std::env::args().collect();
 

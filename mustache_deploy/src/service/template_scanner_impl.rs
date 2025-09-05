@@ -11,6 +11,20 @@ pub struct TemplateScannerImpl;
 impl TemplateScanner for TemplateScannerImpl {
     
     #[doc = "반영할 mustache template 데이터 리스트를 반환해주는 함수"]
+    /// 
+    /// # Arguments
+    /// * `&self` - TemplateScannerImpl 인스턴스
+    /// * `template_name_list` - 스캔할 템플릿 이름들의 목록
+    /// 
+    /// # Returns
+    /// * `Ok(Vec<MustacheTemplate>)` - 스캔된 템플릿 데이터 목록 (이름과 스크립트 내용)
+    /// * `Err(anyhow::Error)` - 파일 읽기 실패, 환경변수 누락, 또는 정규식 처리 오류
+    /// 
+    /// # Environment Variables
+    /// * `MUSTACHE_TEMPLATE_LIST_INFO_PATH` - 템플릿 파일들이 위치한 디렉토리의 상대 경로
+    /// 
+    /// # Template File Format
+    /// 각 템플릿 파일은 `{템플릿이름}.es` 형식이며, 내용은 `"""..."""`로 감싸진 형태
     fn get_template_datas(
         &self,
         template_name_list: &[String],

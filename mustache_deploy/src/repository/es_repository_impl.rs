@@ -19,11 +19,20 @@ pub struct EsClient {
 
 impl EsRepositoryImpl {
     #[doc = "Elasticsearch connection 인스턴스를 초기화 해주는 함수"]
+    /// 
     /// # Arguments
-    /// * `path`    - Elasticsearch connection 정보가 존재하는 경로
-    ///
+    /// 없음 (환경변수와 명령행 인수에서 설정 정보를 읽음)
+    /// 
     /// # Returns
-    /// * anyhow::Result<Self>
+    /// * `Ok(EsRepositoryImpl)` - 초기화된 ES Repository 인스턴스
+    /// * `Err(anyhow::Error)` - 환경변수 누락, 설정 파일 읽기 실패, 또는 연결 설정 오류
+    /// 
+    /// # Environment Variables
+    /// * `ES_PROD_PATH` - 운영 환경 설정 파일 경로
+    /// * `ES_DEV_PATH` - 개발 환경 설정 파일 경로
+    /// 
+    /// # Command Line Arguments
+    /// * `--env prod|dev` - 실행 환경 선택 (기본값: dev)
     pub fn new() -> anyhow::Result<Self> {
         /* 프로그램 실행환경 설정 -> 해당 환경에 따라서 어떤 elasticsearch 를 바라볼건지 정해짐 */
         let args: Vec<String> = std::env::args().collect();
@@ -95,6 +104,18 @@ impl EsRepositoryImpl {
     }
 
     #[doc = "특정 노드의 부하를 줄이기 위해 request를 각 노드로 분산시켜주는 함수"]
+    /// 
+    /// # Arguments
+    /// * `&self` - EsRepositoryImpl 인스턴스
+    /// * `operation` - 각 ES 노드에서 실행할 비동기 함수
+    /// 
+    /// # Returns
+    /// * `Ok(Response)` - 첫 번째 성공한 노드의 응답
+    /// * `Err(anyhow::Error)` - 모든 노드에서 실패했을 때의 마지막 오류
+    /// 
+    /// # Behavior
+    /// - 클라이언트 목록을 랜덤하게 섞어서 부하 분산
+    /// - 첫 번째 성공한 응답을 반환하고 나머지는 시도하지 않음
     async fn execute_on_any_node<F, Fut>(&self, operation: F) -> Result<Response, anyhow::Error>
     where
         F: Fn(Elasticsearch) -> Fut + Send + Sync,
@@ -132,6 +153,20 @@ impl EsRepositoryImpl {
 impl EsRepository for EsRepositoryImpl {
 
     #[doc = "배포 대상이 되는 mustache template 을 실제 elasticsearch server에 배포해주는 함수"]
+    /// 
+    /// # Arguments
+    /// * `&self` - EsRepositoryImpl 인스턴스
+    /// * `template_name` - 배포할 템플릿의 이름 (Elasticsearch에서 사용할 스크립트 ID)
+    /// * `template_content` - 템플릿의 실제 mustache 스크립트 내용
+    /// 
+    /// # Returns
+    /// * `Ok(true)` - 템플릿 배포 성공
+    /// * `Err(anyhow::Error)` - 배포 실패 (네트워크 오류, 권한 오류, 잘못된 템플릿 등)
+    /// 
+    /// # HTTP Request
+    /// - Method: PUT
+    /// - Endpoint: `/_scripts/{template_name}`
+    /// - Body: JSON 형태의 mustache 스크립트
     async fn put_mustache_template(
         &self,
         template_name: &str,

@@ -27,6 +27,16 @@ use controller::main_controller::*;
 mod repository;
 use repository::es_repository_impl::*;
 
+/// Elasticsearch Mustache Template 배포 시스템의 메인 함수
+/// 
+/// # 기능
+/// - 환경 설정 로드 및 로거 초기화
+/// - ES Repository와 템플릿 관련 서비스들 생성
+/// - MainController를 통한 템플릿 배포 작업 실행
+/// 
+/// # 명령행 인수
+/// - `--env dev|prod`: 실행 환경 설정
+/// - `--path <경로>`: 템플릿 파일들이 위치한 기본 경로
 #[tokio::main]
 async fn main() {
     dotenv().ok();

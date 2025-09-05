@@ -14,7 +14,7 @@ pub struct MainController<TD: TemplateDeployer, TR: TemplateReader, TS: Template
 }
 
 impl<TD: TemplateDeployer, TR: TemplateReader, TS: TemplateScanner> MainController<TD, TR, TS> {
-    #[doc = "mustache template 배포함수"]
+    #[doc = "mustache template 배포함수 - 배포 대상 템플릿 목록을 읽고, 스캔하여, Elasticsearch에 배포하는 전체 프로세스를 담당"]
     pub async fn deploy_task(&self) -> anyhow::Result<()> {
         /* 배포대상이 되는 mustache template 읽기 -> repository 에서 읽어줌 */
         let to_deploy_list: Vec<String> = self.template_reader.read_to_deploy_template()?;

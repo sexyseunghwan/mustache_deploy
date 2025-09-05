@@ -1,10 +1,9 @@
 pub use std::{
-    collections::HashSet,
     env,
-    fs::{DirEntry, File},
+    fs::File,
     future::Future,
     io::{BufReader, Write},
-    path::{Path, PathBuf},
+    path::PathBuf,
     sync::Arc,
 };
 
@@ -14,15 +13,13 @@ pub use log::{error, info};
 
 pub use flexi_logger::{Age, Cleanup, Criterion, FileSpec, Logger, Naming, Record};
 
-pub use serde_json::{Value, from_reader, json};
+pub use serde_json::{Value, from_reader};
 
 pub use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 pub use elasticsearch::{
     Elasticsearch,
-    cluster::ClusterStateParts,
     http::headers::HeaderMap,
-    http::request::JsonBody,
     http::response::Response,
     http::transport::{SingleNodeConnectionPool, Transport, TransportBuilder},
     http::{Method, Url},
@@ -41,6 +38,4 @@ pub use getset::Getters;
 
 pub use async_trait::async_trait;
 
-pub use indoc::formatdoc;
-
-pub use once_cell::sync::Lazy;
+pub use regex::Regex;

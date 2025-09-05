@@ -4,14 +4,11 @@ use crate::traits::repository::es_repository::*;
 
 use crate::utils_modules::io_utils::*;
 
-use crate::model::{cluster_info::*, script_content::*};
-
-static ES_REPOSITORY: Lazy<EsRepositoryImpl> = Lazy::new(|| EsRepositoryImpl::new());
+use crate::model::cluster_info::*;
 
 #[derive(Debug, Getters, Clone)]
 #[getset(get = "pub")]
 pub struct EsRepositoryImpl {
-    pub cluster_name: String,
     pub es_clients: Vec<Arc<EsClient>>,
 }
 
@@ -21,17 +18,13 @@ pub struct EsClient {
 }
 
 impl EsRepositoryImpl {
-    pub fn instance() -> &'static EsRepositoryImpl {
-        &ES_REPOSITORY
-    }
-
     #[doc = "Elasticsearch connection 인스턴스를 초기화 해주는 함수"]
     /// # Arguments
     /// * `path`    - Elasticsearch connection 정보가 존재하는 경로
     ///
     /// # Returns
     /// * anyhow::Result<Self>
-    fn new() -> Self {
+    pub fn new() -> Self {
         /* 프로그램 실행환경 설정 -> 해당 환경에 따라서 어떤 elasticsearch 를 바라볼건지 정해짐 */
         let args: Vec<String> = std::env::args().collect();
         let mut env_type: &str = "dev"; /* 환경 기본값 */
@@ -95,7 +88,6 @@ impl EsRepositoryImpl {
         }
 
         EsRepositoryImpl {
-            cluster_name: copy_es_info.cluster_name().to_string(),
             es_clients,
         }
     }
@@ -136,71 +128,59 @@ impl EsRepositoryImpl {
 
 #[async_trait]
 impl EsRepository for EsRepositoryImpl {
-    // #[doc = ""]
-    // async fn get_mustache_template_infos(&self) -> anyhow::Result<Value> {
 
-    //     let response: Response = self.execute_on_any_node(|es_client| async move {
+    #[doc = "배포 대상이 되는 mustache template 을 실제 elasticsearch server에 배포해주는 함수"]
+    async fn put_mustache_template(
+        &self,
+        template_name: &str,
+        template_content: &str,
+    ) -> anyhow::Result<bool> {
+        let endpoint: String = format!("/_scripts/{}", template_name);
 
-    //         let response: Response =
-    //             es_client
-    //             .cluster()
-    //             .state(ClusterStateParts::Metric(&["metadata"]))
-    //             .filter_path(&["metadata.stored_scripts"])
-    //             .send()
-    //             .await?;
+        let script_body: Value = serde_json::json!({
+            "script": {
+                "lang": "mustache",
+                "source": template_content
+            }
+        });
 
-    //         Ok(response)
+        let body_string: String = serde_json::to_string(&script_body)?;
 
-    //     })
-    //     .await?;
+        let response: Response = self
+            .execute_on_any_node(move |es_client| {
+                let endpoint: String = endpoint.clone();
+                let body_string: String = body_string.clone();
 
-    //     if response.status_code().is_success() {
-    //         let response_body: Value = response.json::<Value>().await?;
-    //         Ok(response_body)
-    //     } else {
-    //         Err(anyhow!("[ERROR][EsRepositoryImpl->get_mustache_template_infos()]"))
-    //     }
-    // }
+                async move {
+                    let response: Response = es_client
+                        .transport()
+                        .send(
+                            Method::Put,
+                            endpoint.as_str(),
+                            HeaderMap::new(),
+                            None::<&str>,
+                            Some(body_string.as_bytes()),
+                            None::<Duration>,
+                        )
+                        .await?;
 
-    // #[doc = ""]
-    // async fn get_mustache_script(&self, template_name: &str) -> anyhow::Result<ScriptContent> {
-    //     let endpoint: String = format!("/_scripts/{}", template_name);
+                    Ok(response)
+                }
+            })
+            .await?;
 
-    //     let response: Response = self
-    //         .execute_on_any_node(move |es_client| {
-    //             let endpoint: String = endpoint.clone();
-
-    //             async move {
-    //                 let response: Response = es_client
-    //                     .transport()
-    //                     .send(
-    //                         Method::Get,
-    //                         endpoint.as_str(),
-    //                         HeaderMap::new(),
-    //                         None::<&str>,
-    //                         None::<&[u8]>,
-    //                         None::<Duration>,
-    //                     )
-    //                     .await?;
-
-    //                 Ok(response)
-    //             }
-    //         })
-    //         .await?;
-
-    //     if response.status_code().is_success() {
-    //         let value: serde_json::Value = response.json().await?;
-
-    //         if let Some(script) = value.get("script") {
-    //             let content: ScriptContent = serde_json::from_value(script.clone())?;
-    //             Ok(content)
-    //         } else {
-    //             Err(anyhow!(
-    //                 "[ERROR][EsRepositoryImpl->get_mustache_script] script not found"
-    //             ))
-    //         }
-    //     } else {
-    //         Err(anyhow!("[ERROR][EsRepositoryImpl->get_mustache_script]"))
-    //     }
-    // }
+        if response.status_code().is_success() {
+            Ok(true)
+        } else {
+            let error_body: String = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
+            Err(anyhow!(
+                "[ERROR][EsRepositoryImpl->put_mustache_template] Failed to PUT template '{}': {}",
+                template_name,
+                error_body
+            ))
+        }
+    }
 }

@@ -1,12 +1,9 @@
 /*
 Author      : Seunghwan Shin
-Create date : 2025-09-00
-Description :
+Create date : 2025-09-05
+Description : Git Flow 를 통해서 Elasticsearch Mustache template 배포를 담당해주는 프로그램
 
-History     : 2025-09-00 Seunghwan Shin       # [v.1.0.0] first create.
-
-
-실행방법 cargo run -- --env dev --path C:\Users\user\Desktop\private\mustache_template
+History     : 2025-09-05 Seunghwan Shin       # [v.1.0.0] first create.
 
 cargo run -- --env dev --path C:\Users\user\Desktop\private
 
@@ -20,15 +17,9 @@ use utils_modules::logger_utils::*;
 mod traits;
 
 mod service;
-use service::{
-    backup_service_impl::*, template_deployer_impl::*, template_reader_impl::*,
-    template_scanner_impl::*,
-};
+use service::{template_deployer_impl::*, template_reader_impl::*, template_scanner_impl::*};
 
-use crate::{
-    controller::main_controller::{self, MainController},
-    traits::service::{backup_service, template_deployer, template_reader, template_scanner},
-};
+use crate::controller::main_controller::MainController;
 
 mod model;
 
@@ -37,29 +28,25 @@ mod controller;
 mod config;
 
 mod repository;
+use repository::es_repository_impl::*;
 
 #[tokio::main]
 async fn main() {
     dotenv().ok();
     set_global_logger();
-    info!("Start the mustache template deployment Program");
+    info!("Run the mustache template distribution program.");
 
-    let backup_service: BackupServiceImpl = BackupServiceImpl::new();
-    let template_deployer: TemplateDeployerImpl = TemplateDeployerImpl::new();
+    let es_repository: EsRepositoryImpl = EsRepositoryImpl::new();
+    let template_deployer: TemplateDeployerImpl<EsRepositoryImpl> =
+        TemplateDeployerImpl::new(es_repository);
     let template_reader: TemplateReaderImpl = TemplateReaderImpl::new();
     let template_scanner: TemplateScannerImpl = TemplateScannerImpl::new();
 
     let main_controller: MainController<
-        BackupServiceImpl,
-        TemplateDeployerImpl,
+        TemplateDeployerImpl<EsRepositoryImpl>,
         TemplateReaderImpl,
         TemplateScannerImpl,
-    > = MainController::new(
-        backup_service,
-        template_deployer,
-        template_reader,
-        template_scanner,
-    );
+    > = MainController::new(template_deployer, template_reader, template_scanner);
 
     match main_controller.deploy_task().await {
         Ok(_) => (),

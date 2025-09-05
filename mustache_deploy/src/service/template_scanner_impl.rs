@@ -1,85 +1,76 @@
 use crate::common::common::*;
 
+use crate::model::mustache_template::*;
+
 use crate::traits::service::template_scanner::*;
 
 #[derive(Debug, Getters, Clone, new)]
 #[getset(get = "pub")]
 pub struct TemplateScannerImpl;
 
-impl TemplateScannerImpl {
+impl TemplateScanner for TemplateScannerImpl {
     
-    fn read_file_and_return_script(&self, template_names: &Vec<String>) -> anyhow::Result<()> {
-
+    #[doc = "반영할 mustache template 데이터 리스트를 반환해주는 함수"]
+    fn get_template_datas(
+        &self,
+        template_name_list: &Vec<String>,
+    ) -> anyhow::Result<Vec<MustacheTemplate>> {
         let args: Vec<String> = std::env::args().collect();
 
         let base_path: PathBuf = if args.len() >= 5 && args[3] == "--path" {
             PathBuf::from(&args[4])
         } else {
-            return Err(anyhow::anyhow!("[ERROR][TemplateReaderImpl->read_to_deploy_template] --path argument is required."));
+            return Err(anyhow::anyhow!(
+                "[ERROR][TemplateReaderImpl->read_to_deploy_template] --path argument is required."
+            ));
         };
 
-        let sub_path_str: String = env::var("MUSTACHE_TEMPLATE_LIST_INFO_PATH").unwrap_or_else(|e| {
-            error!(
-                "[ERROR][TemplateReaderImpl->read_to_deploy_template] {:?}",
-                e
-            );
-            panic!(
-                "[ERROR][TemplateReaderImpl->read_to_deploy_template] {:?}",
-                e
-            )
-        });
+        let sub_path_str: String =
+            env::var("MUSTACHE_TEMPLATE_LIST_INFO_PATH").unwrap_or_else(|e| {
+                error!(
+                    "[ERROR][TemplateReaderImpl->read_to_deploy_template] {:?}",
+                    e
+                );
+                panic!(
+                    "[ERROR][TemplateReaderImpl->read_to_deploy_template] {:?}",
+                    e
+                )
+            });
 
         let sub_path: PathBuf = PathBuf::from(sub_path_str);
         let full_path: PathBuf = base_path.join(sub_path);
 
-        println!("full_path: {:?}", full_path);
+        let mut template_list: Vec<MustacheTemplate> = Vec::new();
 
-        for template in template_names {
-            
-            let template_file: String = format!("{}.es", template);
+        for template_name in template_name_list {
+            let template_file: String = format!("{}.es", template_name);
             let template_file_path: PathBuf = PathBuf::from(template_file);
             let full_template_file_path: PathBuf = full_path.join(template_file_path);
 
             let raw: String = match std::fs::read_to_string(full_template_file_path) {
                 Ok(raw) => raw,
                 Err(e) => {
-                    error!("[ERROR][TemplateScannerImpl->read_file_return_form] {:?}", e);
-                    continue
+                    error!(
+                        "[ERROR][TemplateScannerImpl->read_file_return_form] {:?}",
+                        e
+                    );
+                    continue;
                 }
             };
 
-            let raw = std::fs::read_to_string(&template)?;
-            let mut lines = raw.lines();
+            let re: Regex = Regex::new(r#""{3}(?s)(.*?)"{3}"#)?;
 
-            // 첫 줄은 그냥 버림
-            lines.next();
+            if let Some(caps) = re.captures(&raw) {
+                let body: &str = caps
+                    .get(1)
+                    .ok_or_else(|| anyhow::anyhow!("[ERROR][TemplateScannerImpl->get_template_datas] regex capture failed"))?
+                    .as_str();
 
-            let body: String = lines.collect::<Vec<_>>().join("\n");
-
-            println!("body: {}", body);
-
-            
-
+                let template: MustacheTemplate = MustacheTemplate::new(template_name.to_string(), body.to_string());
+                template_list.push(template);
+            }
         }
 
-
-
-
-        Ok(())
+        Ok(template_list)
     }
-    
-
-}
-
-impl TemplateScanner for TemplateScannerImpl {
-
-    fn get_template_datas(&self, list: &Vec<String>) -> anyhow::Result<()> {
-
-        
-
-        //self.read_file_and_return_script(list)?;
-
-        Ok(())
-    }
-
 }

@@ -1,4 +1,4 @@
-use crate::common::common::*;
+use crate::common::*;
 
 use crate::traits::repository::es_repository::*;
 use crate::traits::service::template_deployer::*;
@@ -11,7 +11,6 @@ pub struct TemplateDeployerImpl<R: EsRepository> {
     es_repository: R,
 }
 
-impl<R: EsRepository> TemplateDeployerImpl<R> {}
 
 #[async_trait]
 impl<R: EsRepository> TemplateDeployer for TemplateDeployerImpl<R> {
@@ -21,7 +20,7 @@ impl<R: EsRepository> TemplateDeployer for TemplateDeployerImpl<R> {
 
         for template in template_list {            
                  
-            match self.es_repository.put_mustache_template(template.script_name(), template.scipt()).await {
+            match self.es_repository.put_mustache_template(template.script_name(), template.script()).await {
                 Ok(_) => {
                     info!("{} Deployment success.", template.script_name());
                 },

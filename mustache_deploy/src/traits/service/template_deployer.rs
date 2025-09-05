@@ -1,4 +1,4 @@
-use crate::common::common::*;
+use crate::common::*;
 
 use crate::model::mustache_template::*;
 

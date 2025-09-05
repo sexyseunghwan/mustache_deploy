@@ -1,4 +1,4 @@
-use crate::common::common::*;
+use crate::common::*;
 
 use crate::traits::repository::es_repository::*;
 
@@ -24,73 +24,74 @@ impl EsRepositoryImpl {
     ///
     /// # Returns
     /// * anyhow::Result<Self>
-    pub fn new() -> Self {
+    pub fn new() -> anyhow::Result<Self> {
         /* 프로그램 실행환경 설정 -> 해당 환경에 따라서 어떤 elasticsearch 를 바라볼건지 정해짐 */
         let args: Vec<String> = std::env::args().collect();
-        let mut env_type: &str = "dev"; /* 환경 기본값 */
+        let mut env_type: &str = DEFAULT_ENV; /* 환경 기본값 */
         if args.len() >= 5 && args[1] == "--env" {
             env_type = &args[2];
         }
 
         let es_info_path: &str = match env_type {
-            "prod" => "ES_PROD_PATH",
-            "dev" => "ES_DEV_PATH",
+            "prod" => ENV_PROD_PATH,
+            "dev" => ENV_DEV_PATH,
             _ => {
                 error!(
                     "[WARN][EsRepositoryImpl->new] The execution case must be specified as either prod or dev. Because other arguments are provided, it will be executed in the 'dev' environment."
                 );
-                "ES_DEV_PATH"
+                ENV_DEV_PATH
             }
         };
 
-        let es_info: String = env::var(es_info_path).unwrap_or_else(|e| {
+        let es_info: String = env::var(es_info_path).map_err(|e| {
             error!("[ERROR][EsRepositoryImpl->new] {:?}", e);
-            panic!("[ERROR][EsRepositoryImpl->new] {:?}", e)
-        });
+            anyhow!("Failed to get environment variable {}: {:?}", es_info_path, e)
+        })?;
 
         let copy_es_info: ClusterInfo = read_toml_from_file::<ClusterInfo>(&es_info)
-            .unwrap_or_else(|e| {
+            .map_err(|e| {
                 error!("[ERROR][EsRepositoryImpl->new] {:?}", e);
-                panic!("[ERROR][EsRepositoryImpl->new] {:?}", e);
-            });
+                anyhow!("Failed to read cluster info from {}: {:?}", es_info, e)
+            })?;
 
         let mut es_clients: Vec<Arc<EsClient>> = Vec::new();
 
         for url in copy_es_info.hosts() {
             
-            let parse_url: String = if copy_es_info.es_id() == "" && copy_es_info.es_pw() == "" {
-                format!("http://{}", url)
+            let parse_url: String = if copy_es_info.es_id().is_empty() && copy_es_info.es_pw().is_empty() {
+                format!("{}{}", HTTP_PROTOCOL, url)
             } else {
                 format!(
-                    "http://{}:{}@{}",
+                    "{}{}:{}@{}",
+                    HTTP_PROTOCOL,
                     encode(copy_es_info.es_id()),
                     encode(copy_es_info.es_pw()),
                     url
                 )
             };
 
-            let es_url: Url = Url::parse(&parse_url).unwrap_or_else(|e| {
+            let es_url: Url = Url::parse(&parse_url).map_err(|e| {
                 error!("[ERROR][EsRepositoryImpl->new] {:?}", e);
-                panic!("[ERROR][EsRepositoryImpl->new] {:?}", e);
-            });
+                anyhow!("Failed to parse URL {}: {:?}", parse_url, e)
+            })?;
 
             let conn_pool: SingleNodeConnectionPool = SingleNodeConnectionPool::new(es_url);
             let transport: Transport = TransportBuilder::new(conn_pool)
-                .timeout(Duration::new(5, 0))
+                .timeout(Duration::new(CONNECTION_TIMEOUT_SECS, 0))
                 .build()
-                .unwrap_or_else(|e| {
+                .map_err(|e| {
                     error!("[ERROR][EsRepositoryImpl->new] {:?}", e);
-                    panic!("[ERROR][EsRepositoryImpl->new] {:?}", e);
-                });
+                    anyhow!("Failed to build transport: {:?}", e)
+                })?;
 
             let elastic_conn: Elasticsearch = Elasticsearch::new(transport);
             let es_client: Arc<EsClient> = Arc::new(EsClient::new(elastic_conn));
             es_clients.push(es_client);
         }
 
-        EsRepositoryImpl {
+        Ok(EsRepositoryImpl {
             es_clients,
-        }
+        })
     }
 
     #[doc = "특정 노드의 부하를 줄이기 위해 request를 각 노드로 분산시켜주는 함수"]

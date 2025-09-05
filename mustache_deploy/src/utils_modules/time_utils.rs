@@ -1,4 +1,6 @@
-use crate::common::common::*;
+#![allow(dead_code)]
+
+use crate::common::*;
 
 #[doc = "시스템에 호환되도록 날짜 타입을 변환해주는 함수"]
 pub fn format_datetime(dt: NaiveDateTime) -> Result<String, anyhow::Error> {

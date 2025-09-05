@@ -1,4 +1,4 @@
-use crate::common::common::*;
+use crate::common::*;
 
 use crate::model::mustache_template::*;
 
@@ -13,7 +13,7 @@ impl TemplateScanner for TemplateScannerImpl {
     #[doc = "반영할 mustache template 데이터 리스트를 반환해주는 함수"]
     fn get_template_datas(
         &self,
-        template_name_list: &Vec<String>,
+        template_name_list: &[String],
     ) -> anyhow::Result<Vec<MustacheTemplate>> {
         let args: Vec<String> = std::env::args().collect();
 
@@ -25,22 +25,19 @@ impl TemplateScanner for TemplateScannerImpl {
             ));
         };
 
-        let sub_path_str: String =
-            env::var("MUSTACHE_TEMPLATE_LIST_INFO_PATH").unwrap_or_else(|e| {
-                error!(
-                    "[ERROR][TemplateReaderImpl->read_to_deploy_template] {:?}",
-                    e
-                );
-                panic!(
-                    "[ERROR][TemplateReaderImpl->read_to_deploy_template] {:?}",
-                    e
-                )
-            });
+        let sub_path_str: String = env::var("MUSTACHE_TEMPLATE_LIST_INFO_PATH").map_err(|e| {
+            error!(
+                "[ERROR][TemplateReaderImpl->read_to_deploy_template] {:?}",
+                e
+            );
+            anyhow::anyhow!("Failed to get MUSTACHE_TEMPLATE_LIST_INFO_PATH: {:?}", e)
+        })?;
 
         let sub_path: PathBuf = PathBuf::from(sub_path_str);
         let full_path: PathBuf = base_path.join(sub_path);
 
         let mut template_list: Vec<MustacheTemplate> = Vec::new();
+        let re: Regex = Regex::new(r#""{3}(?s)(.*?)"{3}"#)?;
 
         for template_name in template_name_list {
             let template_file: String = format!("{}.es", template_name);
@@ -58,7 +55,6 @@ impl TemplateScanner for TemplateScannerImpl {
                 }
             };
 
-            let re: Regex = Regex::new(r#""{3}(?s)(.*?)"{3}"#)?;
 
             if let Some(caps) = re.captures(&raw) {
                 let body: &str = caps

@@ -1,10 +1,10 @@
-use crate::common::common::*;
+use crate::common::*;
 
 /*
     Function responsible for logging
 */
 pub fn set_global_logger() {
-    let log_directory = "logs"; // Directory to store log files
+    let log_directory = LOG_DIRECTORY; // Directory to store log files
     let file_prefix = ""; // Prefixes for log files
 
     // Logger setting
@@ -18,7 +18,7 @@ pub fn set_global_logger() {
         .rotate(
             Criterion::Age(Age::Day),  // daily rotation
             Naming::Timestamps,        // Use timestamps for file names
-            Cleanup::KeepLogFiles(10), // Maintain up to 10 log files
+            Cleanup::KeepLogFiles(LOG_FILES_TO_KEEP), // Maintain log files
         )
         .format_for_files(custom_format)
         .start()

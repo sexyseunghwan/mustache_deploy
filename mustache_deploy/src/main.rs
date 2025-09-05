@@ -25,8 +25,6 @@ mod model;
 
 mod controller;
 
-mod config;
-
 mod repository;
 use repository::es_repository_impl::*;
 
